@@ -6,7 +6,7 @@ let cd = new Date();
 var currentDateGlobal = `${cd.getDate()} - ${
   cd.getMonth() + 1
 } - ${cd.getFullYear()}`;
-console.log(currentDateGlobal);
+ ;
 
 // * Quiz object
 const Quiz = {
@@ -256,9 +256,35 @@ let isPerformNext = false;
 
 // animation is running
 let isRunning = false;
+
 // to set isProcessRunning and also sync the progressbar + drawer
+// ! and toggle the next btn active / deactive
+function toggleNextBtn(){
+  let nextBtn = document.querySelector(".btn-next")
+  nextBtn.classList.toggle("btn-deactive")
+}
 const setIsProcessRunning = (value) => {
+  // calling toggle the next
+  if(value != isRunning){
+    toggleNextBtn()
+  }
+  // the step is ended
+  if(!value){
+    // reset showArrowMenuItemNumber 
+    Scenes.menuItemNumber = 1
+    setCC("Click 'Next' to go to next step");
+    get(".blinkArrow").classList.add("bright");
+    Dom.setBlinkArrow(true, 790, 415).play();
+    Scenes.activeAllMenuItems()
+  }
   isRunning = value;
+  if(value){
+    Dom.hideAll()
+    get(".blinkArrow").classList.remove("bright");
+    window.speechSynthesis.cancel();
+    if(ccQueue)
+      ccQueue = []
+  }
 };
 
 // global for document object
@@ -337,7 +363,7 @@ function setCC(text = null, speed = null) {
     strings: ["", ...ccQueue],
     typeSpeed: 25,
     onStringTyped(){
-      console.log(ccQueue);
+       ;
       ccQueue.shift();
       // if(ccQueue.length != 0){
       //   setCC(ccQueue.shift())
@@ -737,6 +763,45 @@ const Scenes = {
   contentAdderAddBtn(text) {
     Scenes.items.contentAdderBox.item.innerHTML += `<li class="btn content-adder">${text}</li>`;
   },
+  // ! Show arrow according to menu item number
+  menuItemNumber: 1,
+  showArrowForMenuItem(repeat=false){
+    if(repeat){
+      this.menuItemNumber--;
+    }
+    this.disableInvalidMenuItemsClick()
+
+    let menuLeftOffset = get(".content-adder-box").offsetLeft
+    let gapArrowWith = 71
+
+    this.leftGap = menuLeftOffset - gapArrowWith
+
+    let initialFixedTop = -35
+    let gapTopFixed = 50
+    let finalTop = initialFixedTop
+
+    for(let i=1;i< this.menuItemNumber;i++){
+      finalTop+=gapTopFixed 
+    }
+
+    this.menuItemNumber++
+    Dom.setBlinkArrow(true, this.leftGap, finalTop).play()
+  },
+  // ! to disable menu item clicks
+  disableInvalidMenuItemsClick(){
+    let allMenuItems = getAll(".content-adder-box li")
+    allMenuItems.forEach(menuItem => {
+      menuItem.style.pointerEvents = "none"
+    })
+
+    allMenuItems[this.menuItemNumber - 1].style.pointerEvents = ""
+  },
+  activeAllMenuItems(){
+    getAll(".content-adder-box li").forEach(item=>item.style.pointerEvents = "")
+  },
+  repeatShowArrowForMenuItem(){
+    this.showArrowForMenuItem(true)
+  },
   currentStep: 0,
   subCurrentStep: 0,
   resetSubStep() {
@@ -753,12 +818,19 @@ const Scenes = {
   // for typing hello text
   intru: null,
   intruVoice: null,
+  experimentNameIntro: "Foundation Formwork (PERI) Experiment",
+  experimentNameCertificate: "Foundation Formwork (PERI) ",
+  experimentNameSpeech: "Foundation Formwork (PERI) ",
   steps: [
     (intro = () => {
       setIsProcessRunning(true);
 
       // remove all for back
       Dom.hideAll();
+
+      // ! set The experiment name
+      let welcomeBoxExpName = get(".welcome-box .title span:nth-child(2)")
+      welcomeBoxExpName.innerHTML = Scenes.experimentNameIntro
 
       // starting elements
 
@@ -783,7 +855,9 @@ const Scenes = {
           return;
         }
         // take only first space
-        let fName = student_name.slice(0, student_name.indexOf(" "));
+        let spaceIndex = student_name.indexOf(" ")
+        spaceIndex = spaceIndex == -1 ? student_name.length : spaceIndex + 1 
+        let fName = student_name.slice(0, spaceIndex);
         hide(error);
         let tl = anime.timeline({
           easing: "easeOutExpo",
@@ -814,7 +888,7 @@ const Scenes = {
               Scenes.items.tempText.set(482, 1);
               textToSpeach(`Hey! ${fName}`);
               textToSpeach(
-                "Welcome to Foundation Wall in Foamwork Experiment of Foamwork Technology in Civil Engineering Virtual Lab developed by Prof. K. N. Jha, Department of Civil Engineering, IIT Delhi."
+                `Welcome to ${Scenes.experimentNameSpeech} Experiment of Formwork Technology in Civil Engineering Virtual Lab developed by Professor K N Jha, Department of Civil Engineering, IIT Delhi.`
               );
               Scenes.items.talk_cloud.set(450, -40, 180).push();
               setCC("");
@@ -834,11 +908,8 @@ const Scenes = {
             .add({
               duration: 12000,
               complete() {
-               
-                
-                setCC("Click 'Next' to go to next step");
-                Dom.setBlinkArrow(true, 790, 444).play();
                 setIsProcessRunning(false);
+                Dom.setBlinkArrow(true, 790, 450).play();
             },
           });
       };
@@ -882,8 +953,7 @@ const Scenes = {
       duration:4000, 
       complete(){
         setIsProcessRunning(false);
-        Dom.setBlinkArrow(true, 790, 444);
-        setCC("Click 'Next' to go to next step");
+        Dom.setBlinkArrow(true, 790, 450);
       }
 
     })
@@ -946,9 +1016,7 @@ const Scenes = {
         })
         .add({
           begin() {
-            Dom.setBlinkArrow(true, 790, 408).play();
             Quiz.loadQuiz();
-            setCC("Click 'Next' to go to next step");
             setIsProcessRunning(false);
           },
         });
@@ -970,7 +1038,7 @@ const Scenes = {
       // Scenes.contentAdderAddBtn("Footing",0).addEventListener('click',()=>{
       //   Dom.setBlinkArrow(-1);
       //   Scenes.items.footing.set(0,0).zIndex(1);
-      //   console.log("print")
+      //    
       // })
       
       Scenes.items.contentAdderBox.set(null,-50).show("flex").push();
@@ -981,7 +1049,8 @@ const Scenes = {
       let contentAdderBtns = getAll(".content-adder-box .btn");
 
       setCC("Click on the 'Footing' to add footing in the lab.");
-      Dom.setBlinkArrow(true, 710, -35).play();
+      Scenes.showArrowForMenuItem()
+
       // onclick
       contentAdderBtns[0].onclick = () => {
         Dom.setBlinkArrow(-1);
@@ -994,7 +1063,7 @@ const Scenes = {
             "A footing supports and distributes the load of a building."
           );
         setCC("Click on the 'Nailer Insert' to add nailer in footing.");
-        Dom.setBlinkArrow(true, 710, 10).play();
+        Scenes.showArrowForMenuItem()
 
         // onclick
         contentAdderBtns[1].onclick = function () {
@@ -1012,7 +1081,7 @@ const Scenes = {
             );
 
           setCC("Click on the 'Form Panel' to add form panel in the lab.");
-          Dom.setBlinkArrow(true, 710, 65).play();
+          Scenes.showArrowForMenuItem()
           //onclick
           contentAdderBtns[2].onclick = () => {
             // hide arrow and text
@@ -1048,8 +1117,6 @@ const Scenes = {
                 translateX: -75,
                 duration: 6000,
                 complete() {
-                  setCC("Click 'Next' to go to next step");
-                  Dom.setBlinkArrow(true, 790, 408).play();
                   Quiz.loadQuiz();
                   setIsProcessRunning(false);
                 },
@@ -1206,7 +1273,7 @@ const Scenes = {
       Scenes.items.tempTitle4.set(30,310).setContent("(Lock Nut)").push().zIndex(0)
 
       setCC("Click on the 'Spread Washer' to place it on the form panel.");
-      Dom.setBlinkArrow(true, 690, -35).play();
+      Scenes.showArrowForMenuItem()
       // onclick
       let washerIdx = 0
       let positionIdx = 0
@@ -1228,14 +1295,14 @@ const Scenes = {
             duration: 2000,
             complete() {
               // setblick after animetion done
-              Dom.setBlinkArrow(true, 690, -35).play()
+              // Scenes.showArrowForMenuItem()
               // onclick
               if (washerIdx >= position.length) {
                 Dom.setBlinkArrow(-1)
                 contentAdderBtns[0].onclick = () => {}
 
                 setCC("Click on the 'Spacer' to place it in the form panel.")
-                Dom.setBlinkArrow(true, 690, 10).play()
+                Scenes.showArrowForMenuItem()
 
                 // onclick
                 let spacerIdx = 0
@@ -1254,7 +1321,7 @@ const Scenes = {
                       ],
                       duration: 1500,
                       complete() {
-                        Dom.setBlinkArrow(true, 690, 10).play();
+                        // Scenes.showArrowForMenuItem()
                         if (spacerIdx >= position.length) {
                           Dom.setBlinkArrow(-1);
                           // to blank the onlclick
@@ -1262,7 +1329,7 @@ const Scenes = {
                           setCC(
                             "Click on the 'Tie Rod' to place it in the form panel."
                           )
-                          Dom.setBlinkArrow(true, 690, 65).play()   
+                          Scenes.showArrowForMenuItem() 
                       
 
                           // onclick
@@ -1292,7 +1359,7 @@ const Scenes = {
                                     setCC(
                                       "Click on the 'Lock Nut' to place it in the form panel."
                                     );
-                                    Dom.setBlinkArrow(true, 690, 120).play();
+                                    Scenes.showArrowForMenuItem()
 
                                     // onclick lock nut
                                     let nutIdx = 0;
@@ -1352,7 +1419,7 @@ const Scenes = {
                                             setCC(
                                               "Click 'Repeat' to repeat the previous steps."
                                             );
-                                            Dom.setBlinkArrow(true, 690, 167).play();
+                                            Scenes.showArrowForMenuItem()
                                             // ! Repeat
                                             // for dom items
                                             Scenes.items.washer3.set(450, 320, 25, 8).zIndex(3).push()
@@ -1437,7 +1504,8 @@ const Scenes = {
                                                             duration: 3000,
                                                             complete(){
                                                               // repeat 
-                                                              repeatIdx++                                                             
+                                                              
+                                                              repeatIdx++;                                                Scenes.repeatShowArrowForMenuItem()   
 
                                                               // * all anime done 
                                                               if(repeatIdx == 2){
@@ -1447,14 +1515,6 @@ const Scenes = {
                                                                 Scenes.items.tempTitle3.hide();
                                                                 Scenes.items.tempTitle4.hide();
 
-                                                                setCC(
-                                                                  "Click 'Next' to go to next step"
-                                                                );
-                                                                Dom.setBlinkArrow(
-                                                                  true,
-                                                                  790,
-                                                                  408
-                                                                ).play();
                                                                 Quiz.loadQuiz();
                                                                 setIsProcessRunning(false);
                                                               }
@@ -1551,7 +1611,7 @@ const Scenes = {
       Scenes.contentAdderAddBtn("Strong Back Right");
       let contentAdderBtns = getAll(".content-adder-box .btn");
 
-      Dom.setBlinkArrow(true, 670, -34).play();
+      Scenes.showArrowForMenuItem()
       setCC(
         "Click on the 'Strong Back Left' to add strong back to support panel."
       );
@@ -1588,7 +1648,7 @@ const Scenes = {
           duration: 3000,
         },0)
         
-        Dom.setBlinkArrow(true, 670, 10).play();
+        Scenes.showArrowForMenuItem()
         setCC(
           "Click on the 'Strong Back Right' to add strong back to support panel."
         );
@@ -1623,8 +1683,6 @@ const Scenes = {
           duration: 3000,
         },0)
           
-          setCC("Click 'Next' to go to next step");
-          Dom.setBlinkArrow(true, 790, 408).play();
           setIsProcessRunning(false);
           anime({
             duration: 1000,
@@ -1640,10 +1698,13 @@ const Scenes = {
       Dom.hideAll();
       Scenes.items.contentAdderBox.setContent("");
 
+            let certificateExpName = get(".certificate .student-detail .row span:nth-child(2)")
+      certificateExpName.innerHTML = Scenes.experimentNameCertificate
+
       // get(".btn-save").style.display = "block";
       Scenes.items.btn_save.show().push();
       Dom.setBlinkArrow(-1);
-      setCC("Download it and share with your friends.");
+      setCC("Experiment completed, Download it and share with your friends.");
       // certificate name
       let certificateStuName = get("#certificateStuName");
       certificateStuName.innerHTML = student_name;
@@ -1676,6 +1737,8 @@ const Scenes = {
       this.currentStep++;
       backDrawerItem();
       backProgressBar();
+      // reset menu item for showArrow
+      this.menuItemNumber = 1;
     }
   },
   next() {
@@ -1694,7 +1757,9 @@ const Scenes = {
   },
 };
 
-// Scenes.steps[5]();
+// Scenes.steps[6]();
+// stepcalling
+Scenes.currentStep = 0
 Scenes.next();
 // Scenes.next();
 // Scenes.next();

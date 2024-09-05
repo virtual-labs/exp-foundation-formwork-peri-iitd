@@ -24,3 +24,16 @@ VIII. Step 8: Final Inspection- Conduct a final inspection to ensure all compone
 <br>
 For the PERI Foundation formwork system, several critical requirements must be met to ensure the quality, safety, and cost-effectiveness of the concrete structure. The formwork must be robust enough to withstand the weight of the concrete and any associated construction activities. It must also be precisely constructed to ensure that the concrete structure takes on the correct shape and dimensions. Additionally, the formwork should be designed for reusability to help reduce overall costs.
 An effective formwork design must account for factors such as the type of foundation, the load-bearing capacity, and the specific environmental conditions. Successful formwork construction relies on clear communication and coordination among the construction team, including engineers, contractors, and workers.
+
+
+#### Procedure Summary:<br>
+I.  Mark the Foundation Area: Mark the foundation dimensions on the site as per plan.<br>
+II. Position Sheathing Panels: Place and align sheathing panels along the marked lines.<br>
+III.  Install Tie Rods and Spacers: Insert tie rods & spacers to maintain correct wall thickness.<br>
+IV. Attach Side and End Yokes: Secure panels with side and end yokes at designated points.<br>
+V.  Secure with Wedges and Bolts: Tighten the formwork using wedges, bolts, and lock nuts.<br>
+VI. Provide Vertical Support: Attach vertical supports to stabilize the formwork structure.<br>
+VII.  Inspect and Adjust: Ensure alignment and stability with a final inspection before concrete pouring.<br>
+
+#### Conclusion:<br>
+In conclusion, setting up the PERI Foundation formwork system requires careful attention to detail, precision in positioning components, and secure fastening to ensure the stability and accuracy of the concrete structure. By following a systematic procedure that includes marking, positioning, securing, and inspecting the formwork, construction teams can achieve a high-quality foundation that meets structural requirements and optimizes both safety and cost-effectiveness. Proper execution and thorough inspection at each step are essential for the successful completion of the project.

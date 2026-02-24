@@ -1,5 +1,6 @@
 // * Audio Mute
 let isMute = false;
+let currentSpeechText = "";
 
 // * Current Date
 let cd = new Date();
@@ -50,14 +51,20 @@ const Quiz = {
   loadQuizCallCount: 0,
   currentQuiz: 0,
   score: 0,
+  completedSteps: [],
+  currentStepId: null,
   loadQuiz() {
+    const stepId = Scenes.currentStep;
+    if (this.completedSteps.includes(stepId)) {
+      return;
+    }
+    this.currentStepId = stepId;
 
-    
     if (this.currentQuiz >= this.quizData.length) {
       return;
     }
     document.querySelector(".transparent-box").style.display = "block";
-    this.loadQuizCallCount++;
+    this.loadQuizCallCount = this.currentQuiz + 1;
     window.speechSynthesis.cancel();
     setCC("Choose the correct answer.");
     this.deselectAnswers();
@@ -147,6 +154,10 @@ const Quiz = {
 
         okBtn.textContent = "Ok";
         okBtn.onclick = function(){
+          if (Quiz.currentStepId !== null) {
+            Quiz.completedSteps.push(Quiz.currentStepId);
+            Quiz.currentStepId = null;
+          }
           Quiz.close();
           Quiz.init();
         }                                                                                                                      
@@ -315,16 +326,17 @@ let student_name = "";
 
 // ! text to audio
 
-const 
-
-
-textToSpeach = (text) => {
-  // if(isMute){
-  //   return;
-  // }
+const textToSpeach = (text) => {
   let utterance = new SpeechSynthesisUtterance();
   utterance.text = text;
   utterance.voice = window.speechSynthesis.getVoices()[0];
+  if (isMute) {
+    utterance.rate = 10;
+    utterance.volume = 0;
+  } else {
+    // Sync speech rate with animation speed (1x = 1 rate, up to 2x)
+    utterance.rate = Math.min(2, anime.speed || 1);
+  }
   window.speechSynthesis.speak(utterance);
   return utterance;
 };
@@ -334,15 +346,25 @@ let ccQueue = [];
 // for subtitile
 let ccObj = null;
 function setCC(text = null, speed = null) {
+  currentSpeechText = text;
   if (ccObj != null) {
     ccObj.destroy();
+    ccObj = null;
   }
   
   let ccDom = get(".steps-subtitle .subtitle");
+
+  // If text is null or empty, just clear the content and return
+  if (!text || text.trim() === "") {
+    ccDom.innerHTML = "";
+    ccQueue = [];
+    return ccDom;
+  }
+
   ccQueue.push(text);
   ccObj = new Typed(ccDom, {
     strings: ["", ...ccQueue],
-    typeSpeed: 25,
+    typeSpeed: 25 / (anime.speed || 1),
     onStringTyped(){
        ;
       ccQueue.shift();
@@ -443,8 +465,17 @@ class Dom {
   static hideAll() {
     //to empty the setCC
     setCC("");
+    
+    // Destroy greeting if it exists
+    if (typeof Scenes !== "undefined" && Scenes.intru) {
+      Scenes.intru.destroy();
+      Scenes.intru = null;
+    }
+
     // to delete all content of content adder menu
-    Scenes.items.contentAdderBox.setContent("");
+    if (typeof Scenes !== "undefined") {
+      Scenes.items.contentAdderBox.setContent("");
+    }
     for (let i of Dom.arrayOfItems) {
       i.hide();
       i.opacity();
@@ -493,7 +524,7 @@ class Dom {
       autoplay: false,
       duration: 300,
     });
-
+    Dom.animePush(blink);
     return blink;
   }
   push() {
@@ -780,6 +811,9 @@ const Scenes = {
   activeAllMenuItems(){
     getAll(".content-adder-box li").forEach(item=>item.style.pointerEvents = "")
   },
+  lockAllMenuItems(){
+    getAll(".content-adder-box li").forEach(item=>item.style.pointerEvents = "none")
+  },
   repeatShowArrowForMenuItem(){
     this.showArrowForMenuItem(true)
   },
@@ -812,6 +846,7 @@ const Scenes = {
       // ! set The experiment name
       let welcomeBoxExpName = get(".welcome-box .title span:nth-child(2)")
       welcomeBoxExpName.innerHTML = Scenes.experimentNameIntro
+      new Dom(".anime-header p").item.style = `font-size: 26px;text-transform: uppercase;`
 
       // starting elements
 
@@ -826,6 +861,7 @@ const Scenes = {
       show(inputWindow, "flex");
       let man = new Dom("man").set(650, 80).push();
 
+      new Dom(".user-input").push();
       let submitBtn = get("#nameSubmitBtn");
       submitBtn.onclick = () => {
         student_name = get("#stuName").value;
@@ -862,9 +898,10 @@ const Scenes = {
               // Scenes.items.tempText.innerHTML = `👋 Hey!<br>${fName}`;
               Scenes.items.tempText.item.style.fontWeight = "bold";
               // show(Scenes.items.tempText);
-              intru = new Typed(Scenes.items.tempText.item, {
+              Scenes.intru = new Typed(Scenes.items.tempText.item, {
                 strings: ["", `Hey!👋<br>${fName}`],
                 typeSpeed: 25,
+                showCursor: false,
               });
               Scenes.items.tempText.set(482, 1);
               textToSpeach(`Hey! ${fName}`);
@@ -881,7 +918,10 @@ const Scenes = {
           .add({
             begin(){
                // to hide previous step images
-               intru.destroy();
+               if (Scenes.intru) {
+                 Scenes.intru.destroy();
+                 Scenes.intru = null;
+               }
               Dom.hideAll();
               Scenes.items.welcomeBox.show("flex");
             }
@@ -930,14 +970,14 @@ const Scenes = {
       //   Scenes.items.table.set(520, 245, 120).push(),
       //   Scenes.items.man.set(380, 120, 250).push(),
       //   Scenes.items.new_utm.set(140, 120, 250).push();
-    anime({
+      let amineObj = anime({
       duration:4000, 
       complete(){
         setIsProcessRunning(false);
         Dom.setBlinkArrow(true, 790, 450);
       }
-
     })
+    Dom.animePush(amineObj);
     return true;
   }),
     (step1 = function () {
@@ -1291,10 +1331,11 @@ const Scenes = {
                   Dom.setBlinkArrow(-1)
                   let allSpacerDom = getAll(".spacer")
                   let position = [300].reverse()
-                    anime.timeline({
+                    let animeObj = anime.timeline({
                       easing: "easeOutQuad",
                     })
-                    .add({
+                    Dom.animePush(animeObj)
+                    animeObj.add({
                       targets: allSpacerDom[spacerIdx],
                       keyframes: [
                         { top: position[spacerIdx++] },
@@ -1319,11 +1360,12 @@ const Scenes = {
                             Dom.setBlinkArrow(-1)
                             let allSteelRodDom = getAll(".steelrod")
                             let position = [302].reverse()
-                            anime
+                            let animeObj = anime
                               .timeline({
                                 easing: "easeOutQuad",
                               })
-                              .add({
+                            Dom.animePush(animeObj)
+                            animeObj.add({
                                 targets: allSteelRodDom[steelRodIdx],
                                 keyframes: [
                                   { top: position[steelRodIdx++] },
@@ -1357,11 +1399,12 @@ const Scenes = {
                                         // i.style.transform = "rotate(0deg)";
                                       }
                                       let position = [285].reverse();
-                                      anime
+                                      let animeObj = anime
                                         .timeline({
                                           easing: "easeOutQuad",
                                         })
-                                        .add({
+                                      Dom.animePush(animeObj)
+                                      animeObj.add({
                                           targets: allLeftNutDom[nutIdx],
                                           keyframes: [
                                             {
@@ -1391,7 +1434,7 @@ const Scenes = {
                                       if (nutIdx >= position.length) {
                                         contentAdderBtns[3].onclick =
                                               () => {};
-                                        anime({
+                                        let animeObjSmall = anime({
                                           duration: 5700,
                                           complete() {
                                             contentAdderBtns[3].onclick =
@@ -1423,7 +1466,8 @@ const Scenes = {
                                               let animeObj = anime.timeline({
                                                 easing: "easeOutQuad",
                                               })
-                                              .add({
+                                              Dom.animePush(animeObj)
+                                              animeObj.add({
                                                 targets: allWasherDom[repeatIdx * 2 + 2],
                                                 keyframes: [{ top: allPositions[0][repeatIdx] }, { left: 217 }],
                                                 duration: 2000,
@@ -1435,10 +1479,11 @@ const Scenes = {
                                                 complete(){
 
                                                   // spacer
-                                                  anime.timeline({
+                                                  let animeObj = anime.timeline({
                                                     easing: "easeOutQuad",
                                                   })
-                                                  .add({
+                                                  Dom.animePush(animeObj)
+                                                  animeObj.add({
                                                     targets: allSpacerDom[repeatIdx+1],
                                                     keyframes: [
                                                       { top: allPositions[1][repeatIdx] },
@@ -1448,10 +1493,11 @@ const Scenes = {
                                                     complete(){
 
                                                       // steel rod
-                                                      anime.timeline({
+                                                      let animeObj = anime.timeline({
                                                         easing: "easeOutQuad",
                                                       })
-                                                      .add({
+                                                      Dom.animePush(animeObj)
+                                                      animeObj.add({
                                                         targets: allSteelRodDom[repeatIdx+1],
                                                         keyframes: [
                                                           { top: allPositions[2][repeatIdx] },
@@ -1461,10 +1507,11 @@ const Scenes = {
                                                         complete(){
 
                                                           // lock nut
-                                                          anime.timeline({
+                                                          let animeObj = anime.timeline({
                                                             easing: "easeOutQuad",
                                                           })
-                                                          .add({
+                                                          Dom.animePush(animeObj)
+                                                          animeObj.add({
                                                             targets: allLeftNutDom[repeatIdx+1],
                                                             keyframes: [
                                                               {
@@ -1532,8 +1579,8 @@ const Scenes = {
               }
             },
           });
+        Dom.animePush(animeObjSmall)
         Dom.animePush(animeObj)
-
       };
       return true;
     }),
@@ -1610,10 +1657,11 @@ const Scenes = {
 
 
         // anime
-        anime.timeline({
+        let animeObj = anime.timeline({
           easing: "easeOutExpo"
         }) 
-        .add({
+        Dom.animePush(animeObj)
+        animeObj.add({
           targets: Scenes.items.ct_prop1.item,
           left: 250,      
           duration: 3000,
@@ -1645,10 +1693,11 @@ const Scenes = {
           Scenes.items.tempTitle1.set(760,182).setContent("CT Prop").push()
           
           // anime
-        anime.timeline({
+        let animeObj2 = anime.timeline({
           easing: "easeOutExpo"
         }) 
-        .add({
+        Dom.animePush(animeObj2)
+        animeObj2.add({
           targets: Scenes.items.ct_prop3.item,
           left: 640,      
           duration: 3000,
@@ -1665,12 +1714,13 @@ const Scenes = {
         },0)
           
           setIsProcessRunning(false);
-          anime({
+          let animeObj3 = anime({
             duration: 1000,
             complete(){
               // Quiz.loadQuiz()
             }
           });
+          Dom.animePush(animeObj3)
         };
       };
       return true;
@@ -1697,10 +1747,13 @@ const Scenes = {
 
       let nxtBtn = get(".btn-next");
       nxtBtn.innerHTML = "Restart";
-      nxtBtn.onclick = function () {
-        location.reload();
-      };
-
+      toggleNextBtn();
+      setTimeout(() => {
+        nxtBtn.onclick = function () {
+          location.reload();
+        };
+        toggleNextBtn();
+      }, 2000);
       return true;
     }),
   ],
@@ -1714,12 +1767,19 @@ const Scenes = {
       Scenes.items.btn_next.item.onclick = ()=>{}
       Dom.hideAll();
       this.currentStep -= 2;
+      // reset menu item for showArrow
+      this.menuItemNumber = 1;
       this.steps[this.currentStep]();
       this.currentStep++;
       backDrawerItem();
       backProgressBar();
-      // reset menu item for showArrow
-      this.menuItemNumber = 1;
+      // isBackBtnClicked = true;
+    }
+
+    if (this.currentStep > 1) {
+      get(".btn-back").style.visibility = "visible";
+    } else {
+      get(".btn-back").style.visibility = "hidden";
     }
   },
   next() {
@@ -1735,12 +1795,18 @@ const Scenes = {
       }         
     } else {
     }
+
+    if (this.currentStep > 1) {
+      get(".btn-back").style.visibility = "visible";
+    } else {
+      get(".btn-back").style.visibility = "hidden";
+    }
   },
 };
 
 // Scenes.steps[6]();
 // stepcalling
-Scenes.currentStep = 0
+Scenes.currentStep = 0; 
 Scenes.next();
 // Scenes.next();
 // Scenes.next();
@@ -1754,6 +1820,14 @@ backBtn.addEventListener("click", () => {
   Scenes.back();
 });
 
+// ! Global click listener for content-adder buttons to prevent double-triggering
+get(".content-adder-box").addEventListener("click", (e) => {
+  if (e.target.closest(".content-adder")) {
+    Scenes.lockAllMenuItems();
+  }
+}, true); // capturing phase ensures this runs before the button's own onclick
+
+
 // print certificate
 get(".btn-save").addEventListener("click", () => {
   window.print();
@@ -1763,12 +1837,14 @@ let muteBtn = get(".btn-mute");
 muteBtn.addEventListener("click", () => {
   if (isMute) {
     isMute = false;
-    muteBtn.src = "./src/images/speech_off_btn.png";
-    muteBtn.title = "Click to Mute";
-  } else {
-    isMute = true;
     muteBtn.src = "./src/images/speech_on_btn.png";
+    muteBtn.title = "Click to Mute";
+    if (currentSpeechText) textToSpeach(currentSpeechText);
+  } else {
+    muteBtn.src = "./src/images/speech_off_btn.png";
     muteBtn.title = "Click to Unmute";
+    isMute = true;
+    window.speechSynthesis.cancel();
   }
 });
 // Scenes.steps[2]()

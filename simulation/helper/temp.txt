@@ -1,0 +1,20 @@
+Scenes.items.washer3.set(450, 320, 25, 8).zIndex(3).push()
+Scenes.items.washer4.set(467, 320, 25, 8).zIndex(3).push()
+Scenes.items.spacer2.set(570,320, 30, 112).zIndex(2).push()
+Scenes.items.steelRod2.set (417,370, 25, 290).zIndex(1).push()
+Scenes.items.leftNut2.set(30, 340, 60, 38).zIndex(10).rotate(40).push()
+Scenes.items.rightNut2.set(80, 340, 60, 38).zIndex(10).rotate(-40).push()
+
+Scenes.items.washer5.set(450, 320, 25, 8).zIndex(3).push()
+Scenes.items.washer6.set(467, 320, 25, 8).zIndex(3).push()
+Scenes.items.spacer3.set(570,320, 30, 112).zIndex(2).push()
+Scenes.items.steelRod3.set (417,370, 25, 290).zIndex(1).push()
+Scenes.items.leftNut3.set(30, 340, 60, 38).zIndex(10).rotate(40).push()
+Scenes.items.rightNut3.set(80, 340, 60, 38).zIndex(10).rotate(-40).push()
+
+
+
+let position = [63, 183, 303].reverse()
+let position = [60, 180, 300].reverse()
+let position = [62, 182, 302].reverse()
+let position = [45, 165, 285].reverse();

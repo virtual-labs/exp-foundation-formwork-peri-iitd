@@ -1,60 +1,42 @@
 // * Audio Mute
 let isMute = false;
+let currentSpeechText = "";
 
 // * Current Date
 let cd = new Date();
 var currentDateGlobal = `${cd.getDate()} - ${
   cd.getMonth() + 1
 } - ${cd.getFullYear()}`;
-console.log(currentDateGlobal);
+ ;
 
 // * Quiz object
 const Quiz = {
   quizData: [
     {
-      question:
-        "Which of the following machine is used to measure compressive strength?",
-      a: "Universal testing machine",
-      b: "Impact testing machine",
-      c: "Fatigue testing machine",
-      d: "Erichsen machine",
-      correct: "a",
+      "question": "What is a common problem associated with premature removal of formwork?",
+      "a": "Increased concrete strength",
+      "b": "Delayed curing",
+      "c": "Cracking of concrete",
+      "d": "Smoother concrete surface ",
+      "correct": "c"
     },
     {
-      question:
-        "Which one of the following, is not a unit of ultimate tensile strength?",
-      a: "MPa",
-      b: "N/m2",
-      c: "Kg/m3",
-      d: "PSI",
-      correct: "c",
+      "question": "Which type of formwork provides high-quality architectural finishes without the need for plastering?",
+      "a": "Timber formwork",
+      "b": "Steel formwork",
+      "c": "Plastic formwork",
+      "d": "Plywood formwork ",
+      "correct": "b"
     },
     {
-      question: "The extensometer can be attached anywhere to the specimen _",
-      a: "Yes",
-      b: "No",
-      c: "No but sometime yes",
-      d: "None of the above",
-      correct: "b",
+      "question": "What is the typical lifespan of aluminum formwork systems when properly maintained?",
+      "a": "50-100 uses",
+      "b": "100-200 uses",
+      "c": "200-300 uses",
+      "d": "500-1000 uses ",
+      "correct": "c"
     },
-
-    {
-      question:
-        "What is the smallest measurement that is possible by vernier calliper?",
-      a: "Least count",
-      b: "Actual reading",
-      c: "Main scale division",
-      d: "Vernier scale division",
-      correct: "a",
-    },
-    {
-      question: "What is the least count of a standard metric vernier caliper",
-      a: "0.002mm",
-      b: "0.02mm",
-      c: "0.1mm",
-      d: "0.2mm",
-      correct: "b",
-    },
+  
   ],
   quiz_contianer: document.querySelector(".quiz-container"),
   quiz: document.getElementById("quiz"),
@@ -69,14 +51,20 @@ const Quiz = {
   loadQuizCallCount: 0,
   currentQuiz: 0,
   score: 0,
+  completedSteps: [],
+  currentStepId: null,
   loadQuiz() {
+    const stepId = Scenes.currentStep;
+    if (this.completedSteps.includes(stepId)) {
+      return;
+    }
+    this.currentStepId = stepId;
 
-    
     if (this.currentQuiz >= this.quizData.length) {
       return;
     }
     document.querySelector(".transparent-box").style.display = "block";
-    this.loadQuizCallCount++;
+    this.loadQuizCallCount = this.currentQuiz + 1;
     window.speechSynthesis.cancel();
     setCC("Choose the correct answer.");
     this.deselectAnswers();
@@ -166,6 +154,10 @@ const Quiz = {
 
         okBtn.textContent = "Ok";
         okBtn.onclick = function(){
+          if (Quiz.currentStepId !== null) {
+            Quiz.completedSteps.push(Quiz.currentStepId);
+            Quiz.currentStepId = null;
+          }
           Quiz.close();
           Quiz.init();
         }                                                                                                                      
@@ -256,9 +248,35 @@ let isPerformNext = false;
 
 // animation is running
 let isRunning = false;
+
 // to set isProcessRunning and also sync the progressbar + drawer
+// ! and toggle the next btn active / deactive
+function toggleNextBtn(){
+  let nextBtn = document.querySelector(".btn-next")
+  nextBtn.classList.toggle("btn-deactive")
+}
 const setIsProcessRunning = (value) => {
+  // calling toggle the next
+  if(value != isRunning){
+    toggleNextBtn()
+  }
+  // the step is ended
+  if(!value){
+    // reset showArrowMenuItemNumber 
+    Scenes.menuItemNumber = 1
+    setCC("Click 'Next' to go to next step");
+    get(".blinkArrow").classList.add("bright");
+    Dom.setBlinkArrow(true, 790, 415).play();
+    Scenes.activeAllMenuItems()
+  }
   isRunning = value;
+  if(value){
+    Dom.hideAll()
+    get(".blinkArrow").classList.remove("bright");
+    window.speechSynthesis.cancel();
+    if(ccQueue)
+      ccQueue = []
+  }
 };
 
 // global for document object
@@ -308,16 +326,17 @@ let student_name = "";
 
 // ! text to audio
 
-const 
-
-
-textToSpeach = (text) => {
-  // if(isMute){
-  //   return;
-  // }
+const textToSpeach = (text) => {
   let utterance = new SpeechSynthesisUtterance();
   utterance.text = text;
   utterance.voice = window.speechSynthesis.getVoices()[0];
+  if (isMute) {
+    utterance.rate = 10;
+    utterance.volume = 0;
+  } else {
+    // Sync speech rate with animation speed (1x = 1 rate, up to 2x)
+    utterance.rate = Math.min(2, anime.speed || 1);
+  }
   window.speechSynthesis.speak(utterance);
   return utterance;
 };
@@ -327,17 +346,27 @@ let ccQueue = [];
 // for subtitile
 let ccObj = null;
 function setCC(text = null, speed = null) {
+  currentSpeechText = text;
   if (ccObj != null) {
     ccObj.destroy();
+    ccObj = null;
   }
   
   let ccDom = get(".steps-subtitle .subtitle");
+
+  // If text is null or empty, just clear the content and return
+  if (!text || text.trim() === "") {
+    ccDom.innerHTML = "";
+    ccQueue = [];
+    return ccDom;
+  }
+
   ccQueue.push(text);
   ccObj = new Typed(ccDom, {
     strings: ["", ...ccQueue],
-    typeSpeed: 25,
+    typeSpeed: 25 / (anime.speed || 1),
     onStringTyped(){
-      console.log(ccQueue);
+       ;
       ccQueue.shift();
       // if(ccQueue.length != 0){
       //   setCC(ccQueue.shift())
@@ -436,8 +465,17 @@ class Dom {
   static hideAll() {
     //to empty the setCC
     setCC("");
+    
+    // Destroy greeting if it exists
+    if (typeof Scenes !== "undefined" && Scenes.intru) {
+      Scenes.intru.destroy();
+      Scenes.intru = null;
+    }
+
     // to delete all content of content adder menu
-    Scenes.items.contentAdderBox.setContent("");
+    if (typeof Scenes !== "undefined") {
+      Scenes.items.contentAdderBox.setContent("");
+    }
     for (let i of Dom.arrayOfItems) {
       i.hide();
       i.opacity();
@@ -486,7 +524,7 @@ class Dom {
       autoplay: false,
       duration: 300,
     });
-
+    Dom.animePush(blink);
     return blink;
   }
   push() {
@@ -737,6 +775,48 @@ const Scenes = {
   contentAdderAddBtn(text) {
     Scenes.items.contentAdderBox.item.innerHTML += `<li class="btn content-adder">${text}</li>`;
   },
+  // ! Show arrow according to menu item number
+  menuItemNumber: 1,
+  showArrowForMenuItem(repeat=false){
+    if(repeat){
+      this.menuItemNumber--;
+    }
+    this.disableInvalidMenuItemsClick()
+
+    let menuLeftOffset = get(".content-adder-box").offsetLeft
+    let gapArrowWith = 71
+
+    this.leftGap = menuLeftOffset - gapArrowWith
+
+    let initialFixedTop = -35
+    let gapTopFixed = 50
+    let finalTop = initialFixedTop
+
+    for(let i=1;i< this.menuItemNumber;i++){
+      finalTop+=gapTopFixed 
+    }
+
+    this.menuItemNumber++
+    Dom.setBlinkArrow(true, this.leftGap, finalTop).play()
+  },
+  // ! to disable menu item clicks
+  disableInvalidMenuItemsClick(){
+    let allMenuItems = getAll(".content-adder-box li")
+    allMenuItems.forEach(menuItem => {
+      menuItem.style.pointerEvents = "none"
+    })
+
+    allMenuItems[this.menuItemNumber - 1].style.pointerEvents = ""
+  },
+  activeAllMenuItems(){
+    getAll(".content-adder-box li").forEach(item=>item.style.pointerEvents = "")
+  },
+  lockAllMenuItems(){
+    getAll(".content-adder-box li").forEach(item=>item.style.pointerEvents = "none")
+  },
+  repeatShowArrowForMenuItem(){
+    this.showArrowForMenuItem(true)
+  },
   currentStep: 0,
   subCurrentStep: 0,
   resetSubStep() {
@@ -753,12 +833,20 @@ const Scenes = {
   // for typing hello text
   intru: null,
   intruVoice: null,
+  experimentNameIntro: "Foundation Formwork (PERI) Experiment",
+  experimentNameCertificate: "Foundation Formwork (PERI) ",
+  experimentNameSpeech: "Foundation Formwork (PERI) ",
   steps: [
     (intro = () => {
       setIsProcessRunning(true);
 
       // remove all for back
       Dom.hideAll();
+
+      // ! set The experiment name
+      let welcomeBoxExpName = get(".welcome-box .title span:nth-child(2)")
+      welcomeBoxExpName.innerHTML = Scenes.experimentNameIntro
+      new Dom(".anime-header p").item.style = `font-size: 26px;text-transform: uppercase;`
 
       // starting elements
 
@@ -773,6 +861,7 @@ const Scenes = {
       show(inputWindow, "flex");
       let man = new Dom("man").set(650, 80).push();
 
+      new Dom(".user-input").push();
       let submitBtn = get("#nameSubmitBtn");
       submitBtn.onclick = () => {
         student_name = get("#stuName").value;
@@ -783,7 +872,9 @@ const Scenes = {
           return;
         }
         // take only first space
-        let fName = student_name.slice(0, student_name.indexOf(" "));
+        let spaceIndex = student_name.indexOf(" ")
+        spaceIndex = spaceIndex == -1 ? student_name.length : spaceIndex + 1 
+        let fName = student_name.slice(0, spaceIndex);
         hide(error);
         let tl = anime.timeline({
           easing: "easeOutExpo",
@@ -807,14 +898,15 @@ const Scenes = {
               // Scenes.items.tempText.innerHTML = `👋 Hey!<br>${fName}`;
               Scenes.items.tempText.item.style.fontWeight = "bold";
               // show(Scenes.items.tempText);
-              intru = new Typed(Scenes.items.tempText.item, {
+              Scenes.intru = new Typed(Scenes.items.tempText.item, {
                 strings: ["", `Hey!👋<br>${fName}`],
                 typeSpeed: 25,
+                showCursor: false,
               });
               Scenes.items.tempText.set(482, 1);
               textToSpeach(`Hey! ${fName}`);
               textToSpeach(
-                "Welcome to Foundation Wall in Foamwork Experiment of Foamwork Technology in Civil Engineering Virtual Lab developed by Prof. K. N. Jha, Department of Civil Engineering, IIT Delhi."
+                `Welcome to ${Scenes.experimentNameSpeech} Experiment of Formwork Technology in Civil Engineering Virtual Lab developed by Professor K N Jha, Department of Civil Engineering, IIT Delhi.`
               );
               Scenes.items.talk_cloud.set(450, -40, 180).push();
               setCC("");
@@ -826,7 +918,10 @@ const Scenes = {
           .add({
             begin(){
                // to hide previous step images
-               intru.destroy();
+               if (Scenes.intru) {
+                 Scenes.intru.destroy();
+                 Scenes.intru = null;
+               }
               Dom.hideAll();
               Scenes.items.welcomeBox.show("flex");
             }
@@ -834,11 +929,8 @@ const Scenes = {
             .add({
               duration: 12000,
               complete() {
-               
-                
-                setCC("Click 'Next' to go to next step");
-                Dom.setBlinkArrow(true, 790, 444).play();
                 setIsProcessRunning(false);
+                Dom.setBlinkArrow(true, 790, 450).play();
             },
           });
       };
@@ -878,15 +970,14 @@ const Scenes = {
       //   Scenes.items.table.set(520, 245, 120).push(),
       //   Scenes.items.man.set(380, 120, 250).push(),
       //   Scenes.items.new_utm.set(140, 120, 250).push();
-    anime({
+      let amineObj = anime({
       duration:4000, 
       complete(){
         setIsProcessRunning(false);
-        Dom.setBlinkArrow(true, 790, 444);
-        setCC("Click 'Next' to go to next step");
+        Dom.setBlinkArrow(true, 790, 450);
       }
-
     })
+    Dom.animePush(amineObj);
     return true;
   }),
     (step1 = function () {
@@ -946,9 +1037,7 @@ const Scenes = {
         })
         .add({
           begin() {
-            Dom.setBlinkArrow(true, 790, 408).play();
             Quiz.loadQuiz();
-            setCC("Click 'Next' to go to next step");
             setIsProcessRunning(false);
           },
         });
@@ -970,7 +1059,7 @@ const Scenes = {
       // Scenes.contentAdderAddBtn("Footing",0).addEventListener('click',()=>{
       //   Dom.setBlinkArrow(-1);
       //   Scenes.items.footing.set(0,0).zIndex(1);
-      //   console.log("print")
+      //    
       // })
       
       Scenes.items.contentAdderBox.set(null,-50).show("flex").push();
@@ -981,7 +1070,8 @@ const Scenes = {
       let contentAdderBtns = getAll(".content-adder-box .btn");
 
       setCC("Click on the 'Footing' to add footing in the lab.");
-      Dom.setBlinkArrow(true, 710, -35).play();
+      Scenes.showArrowForMenuItem()
+
       // onclick
       contentAdderBtns[0].onclick = () => {
         Dom.setBlinkArrow(-1);
@@ -994,7 +1084,7 @@ const Scenes = {
             "A footing supports and distributes the load of a building."
           );
         setCC("Click on the 'Nailer Insert' to add nailer in footing.");
-        Dom.setBlinkArrow(true, 710, 10).play();
+        Scenes.showArrowForMenuItem()
 
         // onclick
         contentAdderBtns[1].onclick = function () {
@@ -1012,7 +1102,7 @@ const Scenes = {
             );
 
           setCC("Click on the 'Form Panel' to add form panel in the lab.");
-          Dom.setBlinkArrow(true, 710, 65).play();
+          Scenes.showArrowForMenuItem()
           //onclick
           contentAdderBtns[2].onclick = () => {
             // hide arrow and text
@@ -1048,8 +1138,6 @@ const Scenes = {
                 translateX: -75,
                 duration: 6000,
                 complete() {
-                  setCC("Click 'Next' to go to next step");
-                  Dom.setBlinkArrow(true, 790, 408).play();
                   Quiz.loadQuiz();
                   setIsProcessRunning(false);
                 },
@@ -1206,7 +1294,7 @@ const Scenes = {
       Scenes.items.tempTitle4.set(30,310).setContent("(Lock Nut)").push().zIndex(0)
 
       setCC("Click on the 'Spread Washer' to place it on the form panel.");
-      Dom.setBlinkArrow(true, 690, -35).play();
+      Scenes.showArrowForMenuItem()
       // onclick
       let washerIdx = 0
       let positionIdx = 0
@@ -1228,14 +1316,14 @@ const Scenes = {
             duration: 2000,
             complete() {
               // setblick after animetion done
-              Dom.setBlinkArrow(true, 690, -35).play()
+              // Scenes.showArrowForMenuItem()
               // onclick
               if (washerIdx >= position.length) {
                 Dom.setBlinkArrow(-1)
                 contentAdderBtns[0].onclick = () => {}
 
                 setCC("Click on the 'Spacer' to place it in the form panel.")
-                Dom.setBlinkArrow(true, 690, 10).play()
+                Scenes.showArrowForMenuItem()
 
                 // onclick
                 let spacerIdx = 0
@@ -1243,10 +1331,11 @@ const Scenes = {
                   Dom.setBlinkArrow(-1)
                   let allSpacerDom = getAll(".spacer")
                   let position = [300].reverse()
-                    anime.timeline({
+                    let animeObj = anime.timeline({
                       easing: "easeOutQuad",
                     })
-                    .add({
+                    Dom.animePush(animeObj)
+                    animeObj.add({
                       targets: allSpacerDom[spacerIdx],
                       keyframes: [
                         { top: position[spacerIdx++] },
@@ -1254,7 +1343,7 @@ const Scenes = {
                       ],
                       duration: 1500,
                       complete() {
-                        Dom.setBlinkArrow(true, 690, 10).play();
+                        // Scenes.showArrowForMenuItem()
                         if (spacerIdx >= position.length) {
                           Dom.setBlinkArrow(-1);
                           // to blank the onlclick
@@ -1262,7 +1351,7 @@ const Scenes = {
                           setCC(
                             "Click on the 'Tie Rod' to place it in the form panel."
                           )
-                          Dom.setBlinkArrow(true, 690, 65).play()   
+                          Scenes.showArrowForMenuItem() 
                       
 
                           // onclick
@@ -1271,11 +1360,12 @@ const Scenes = {
                             Dom.setBlinkArrow(-1)
                             let allSteelRodDom = getAll(".steelrod")
                             let position = [302].reverse()
-                            anime
+                            let animeObj = anime
                               .timeline({
                                 easing: "easeOutQuad",
                               })
-                              .add({
+                            Dom.animePush(animeObj)
+                            animeObj.add({
                                 targets: allSteelRodDom[steelRodIdx],
                                 keyframes: [
                                   { top: position[steelRodIdx++] },
@@ -1292,7 +1382,7 @@ const Scenes = {
                                     setCC(
                                       "Click on the 'Lock Nut' to place it in the form panel."
                                     );
-                                    Dom.setBlinkArrow(true, 690, 120).play();
+                                    Scenes.showArrowForMenuItem()
 
                                     // onclick lock nut
                                     let nutIdx = 0;
@@ -1309,11 +1399,12 @@ const Scenes = {
                                         // i.style.transform = "rotate(0deg)";
                                       }
                                       let position = [285].reverse();
-                                      anime
+                                      let animeObj = anime
                                         .timeline({
                                           easing: "easeOutQuad",
                                         })
-                                        .add({
+                                      Dom.animePush(animeObj)
+                                      animeObj.add({
                                           targets: allLeftNutDom[nutIdx],
                                           keyframes: [
                                             {
@@ -1343,7 +1434,7 @@ const Scenes = {
                                       if (nutIdx >= position.length) {
                                         contentAdderBtns[3].onclick =
                                               () => {};
-                                        anime({
+                                        let animeObjSmall = anime({
                                           duration: 5700,
                                           complete() {
                                             contentAdderBtns[3].onclick =
@@ -1352,7 +1443,7 @@ const Scenes = {
                                             setCC(
                                               "Click 'Repeat' to repeat the previous steps."
                                             );
-                                            Dom.setBlinkArrow(true, 690, 167).play();
+                                            Scenes.showArrowForMenuItem()
                                             // ! Repeat
                                             // for dom items
                                             Scenes.items.washer3.set(450, 320, 25, 8).zIndex(3).push()
@@ -1375,7 +1466,8 @@ const Scenes = {
                                               let animeObj = anime.timeline({
                                                 easing: "easeOutQuad",
                                               })
-                                              .add({
+                                              Dom.animePush(animeObj)
+                                              animeObj.add({
                                                 targets: allWasherDom[repeatIdx * 2 + 2],
                                                 keyframes: [{ top: allPositions[0][repeatIdx] }, { left: 217 }],
                                                 duration: 2000,
@@ -1387,10 +1479,11 @@ const Scenes = {
                                                 complete(){
 
                                                   // spacer
-                                                  anime.timeline({
+                                                  let animeObj = anime.timeline({
                                                     easing: "easeOutQuad",
                                                   })
-                                                  .add({
+                                                  Dom.animePush(animeObj)
+                                                  animeObj.add({
                                                     targets: allSpacerDom[repeatIdx+1],
                                                     keyframes: [
                                                       { top: allPositions[1][repeatIdx] },
@@ -1400,10 +1493,11 @@ const Scenes = {
                                                     complete(){
 
                                                       // steel rod
-                                                      anime.timeline({
+                                                      let animeObj = anime.timeline({
                                                         easing: "easeOutQuad",
                                                       })
-                                                      .add({
+                                                      Dom.animePush(animeObj)
+                                                      animeObj.add({
                                                         targets: allSteelRodDom[repeatIdx+1],
                                                         keyframes: [
                                                           { top: allPositions[2][repeatIdx] },
@@ -1413,10 +1507,11 @@ const Scenes = {
                                                         complete(){
 
                                                           // lock nut
-                                                          anime.timeline({
+                                                          let animeObj = anime.timeline({
                                                             easing: "easeOutQuad",
                                                           })
-                                                          .add({
+                                                          Dom.animePush(animeObj)
+                                                          animeObj.add({
                                                             targets: allLeftNutDom[repeatIdx+1],
                                                             keyframes: [
                                                               {
@@ -1437,7 +1532,8 @@ const Scenes = {
                                                             duration: 3000,
                                                             complete(){
                                                               // repeat 
-                                                              repeatIdx++                                                             
+                                                              
+                                                              repeatIdx++;                                                Scenes.repeatShowArrowForMenuItem()   
 
                                                               // * all anime done 
                                                               if(repeatIdx == 2){
@@ -1447,14 +1543,6 @@ const Scenes = {
                                                                 Scenes.items.tempTitle3.hide();
                                                                 Scenes.items.tempTitle4.hide();
 
-                                                                setCC(
-                                                                  "Click 'Next' to go to next step"
-                                                                );
-                                                                Dom.setBlinkArrow(
-                                                                  true,
-                                                                  790,
-                                                                  408
-                                                                ).play();
                                                                 Quiz.loadQuiz();
                                                                 setIsProcessRunning(false);
                                                               }
@@ -1491,8 +1579,8 @@ const Scenes = {
               }
             },
           });
+        Dom.animePush(animeObjSmall)
         Dom.animePush(animeObj)
-
       };
       return true;
     }),
@@ -1551,7 +1639,7 @@ const Scenes = {
       Scenes.contentAdderAddBtn("Strong Back Right");
       let contentAdderBtns = getAll(".content-adder-box .btn");
 
-      Dom.setBlinkArrow(true, 670, -34).play();
+      Scenes.showArrowForMenuItem()
       setCC(
         "Click on the 'Strong Back Left' to add strong back to support panel."
       );
@@ -1569,10 +1657,11 @@ const Scenes = {
 
 
         // anime
-        anime.timeline({
+        let animeObj = anime.timeline({
           easing: "easeOutExpo"
         }) 
-        .add({
+        Dom.animePush(animeObj)
+        animeObj.add({
           targets: Scenes.items.ct_prop1.item,
           left: 250,      
           duration: 3000,
@@ -1588,7 +1677,7 @@ const Scenes = {
           duration: 3000,
         },0)
         
-        Dom.setBlinkArrow(true, 670, 10).play();
+        Scenes.showArrowForMenuItem()
         setCC(
           "Click on the 'Strong Back Right' to add strong back to support panel."
         );
@@ -1604,10 +1693,11 @@ const Scenes = {
           Scenes.items.tempTitle1.set(760,182).setContent("CT Prop").push()
           
           // anime
-        anime.timeline({
+        let animeObj2 = anime.timeline({
           easing: "easeOutExpo"
         }) 
-        .add({
+        Dom.animePush(animeObj2)
+        animeObj2.add({
           targets: Scenes.items.ct_prop3.item,
           left: 640,      
           duration: 3000,
@@ -1623,15 +1713,14 @@ const Scenes = {
           duration: 3000,
         },0)
           
-          setCC("Click 'Next' to go to next step");
-          Dom.setBlinkArrow(true, 790, 408).play();
           setIsProcessRunning(false);
-          anime({
+          let animeObj3 = anime({
             duration: 1000,
             complete(){
-              Quiz.loadQuiz()
+              // Quiz.loadQuiz()
             }
           });
+          Dom.animePush(animeObj3)
         };
       };
       return true;
@@ -1639,6 +1728,9 @@ const Scenes = {
     (completed = function () {
       Dom.hideAll();
       Scenes.items.contentAdderBox.setContent("");
+
+            let certificateExpName = get(".certificate .student-detail .row span:nth-child(2)")
+      certificateExpName.innerHTML = Scenes.experimentNameCertificate
 
       // get(".btn-save").style.display = "block";
       Scenes.items.btn_save.show().push();
@@ -1655,10 +1747,13 @@ const Scenes = {
 
       let nxtBtn = get(".btn-next");
       nxtBtn.innerHTML = "Restart";
-      nxtBtn.onclick = function () {
-        location.reload();
-      };
-
+      toggleNextBtn();
+      setTimeout(() => {
+        nxtBtn.onclick = function () {
+          location.reload();
+        };
+        toggleNextBtn();
+      }, 2000);
       return true;
     }),
   ],
@@ -1672,10 +1767,19 @@ const Scenes = {
       Scenes.items.btn_next.item.onclick = ()=>{}
       Dom.hideAll();
       this.currentStep -= 2;
+      // reset menu item for showArrow
+      this.menuItemNumber = 1;
       this.steps[this.currentStep]();
       this.currentStep++;
       backDrawerItem();
       backProgressBar();
+      // isBackBtnClicked = true;
+    }
+
+    if (this.currentStep > 1) {
+      get(".btn-back").style.visibility = "visible";
+    } else {
+      get(".btn-back").style.visibility = "hidden";
     }
   },
   next() {
@@ -1691,10 +1795,18 @@ const Scenes = {
       }         
     } else {
     }
+
+    if (this.currentStep > 1) {
+      get(".btn-back").style.visibility = "visible";
+    } else {
+      get(".btn-back").style.visibility = "hidden";
+    }
   },
 };
 
-// Scenes.steps[5]();
+// Scenes.steps[6]();
+// stepcalling
+Scenes.currentStep = 0; 
 Scenes.next();
 // Scenes.next();
 // Scenes.next();
@@ -1708,6 +1820,14 @@ backBtn.addEventListener("click", () => {
   Scenes.back();
 });
 
+// ! Global click listener for content-adder buttons to prevent double-triggering
+get(".content-adder-box").addEventListener("click", (e) => {
+  if (e.target.closest(".content-adder")) {
+    Scenes.lockAllMenuItems();
+  }
+}, true); // capturing phase ensures this runs before the button's own onclick
+
+
 // print certificate
 get(".btn-save").addEventListener("click", () => {
   window.print();
@@ -1717,12 +1837,14 @@ let muteBtn = get(".btn-mute");
 muteBtn.addEventListener("click", () => {
   if (isMute) {
     isMute = false;
-    muteBtn.src = "./src/images/speech_off_btn.png";
-    muteBtn.title = "Click to Mute";
-  } else {
-    isMute = true;
     muteBtn.src = "./src/images/speech_on_btn.png";
+    muteBtn.title = "Click to Mute";
+    if (currentSpeechText) textToSpeach(currentSpeechText);
+  } else {
+    muteBtn.src = "./src/images/speech_off_btn.png";
     muteBtn.title = "Click to Unmute";
+    isMute = true;
+    window.speechSynthesis.cancel();
   }
 });
 // Scenes.steps[2]()
